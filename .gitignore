@@ -1,0 +1,26 @@
+# Environment variables
+.env
+
+# Certificates
+certs/
+*.key
+*.crt
+*.pem
+*.csr
+
+# Docker volumes
+postgres_data/
+pgadmin_data/
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

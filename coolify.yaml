@@ -1,0 +1,48 @@
+# Coolify Configuration File
+# This file helps Coolify understand how to deploy this application
+
+# Build configuration
+buildCommand=""
+startCommand="./coolify-deploy.sh"
+
+# Port configuration
+ports:
+  - "5432:5432"  # PostgreSQL
+  - "5050:80"    # pgAdmin (optional)
+
+# Environment variables required
+requiredEnvVars:
+  - POSTGRES_USER
+  - POSTGRES_PASSWORD
+  - POSTGRES_DB
+  - DOMAIN
+  - LETSENCRYPT_EMAIL
+
+# Health check
+healthcheck:
+  type: tcp
+  port: 5432
+  interval: 10s
+  timeout: 5s
+  retries: 5
+
+# Persistent volumes
+volumes:
+  - postgres_data:/var/lib/postgresql/data
+  - ./certs:/var/lib/postgresql/certs:ro
+  - ./letsencrypt:/etc/letsencrypt:ro
+
+# Pre-deployment hooks
+preDeploy:
+  - chmod +x setup-certs.sh
+  - chmod +x coolify-deploy.sh
+
+# Post-deployment hooks
+postDeploy:
+  - echo "PostgreSQL with SSL deployed successfully"
+  - ./test-ssl.sh
+
+# Backup schedule (optional)
+backup:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  command: "./backup.sh"
