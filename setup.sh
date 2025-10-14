@@ -66,6 +66,11 @@ mkdir -p "${SCRIPT_DIR}/backups"
 
 echo -e "${GREEN}✓ Directories created${NC}"
 
+# Generate pg_hba.conf based on ALLOWED_HOSTS
+echo -e "${BLUE}Configuring access control...${NC}"
+chmod +x "${SCRIPT_DIR}/generate-pg-hba.sh"
+"${SCRIPT_DIR}/generate-pg-hba.sh"
+
 # Stop existing containers if running
 if docker ps -a | grep -q "managed-postgres-db"; then
     echo -e "${YELLOW}⚠ Existing container found. Stopping...${NC}"

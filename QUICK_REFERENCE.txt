@@ -1,0 +1,163 @@
+╔═══════════════════════════════════════════════════════════════════════╗
+║             MANAGED POSTGRESQL WITH SSL - QUICK REFERENCE             ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+📋 SETUP COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+cp .env.example .env       # Copy environment template
+nano .env                  # Edit configuration
+./setup.sh                 # Run initial setup
+./start.sh                 # Start database
+./stop.sh                  # Stop database
+
+🔐 SSL CONFIGURATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Development (self-signed):
+  DOMAIN=localhost
+  USE_LETSENCRYPT=false
+
+Production (Let's Encrypt):
+  DOMAIN=db.yourdomain.com
+  LETSENCRYPT_EMAIL=admin@yourdomain.com
+  USE_LETSENCRYPT=true
+
+Commands:
+  ./setup-certs.sh           # Generate/obtain certificates
+  ./renew-certs.sh           # Renew Let's Encrypt certs
+  ./check-cert-expiry.sh     # Check expiration
+
+🌐 ACCESS CONTROL (ALLOWED_HOSTS)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  IMPORTANT: Use hostnames/IPs, NOT URLs!
+   ✅ app.example.com          ❌ https://app.example.com
+   ✅ 192.168.1.100            ❌ http://192.168.1.100
+
+Common Patterns:
+  ALLOWED_HOSTS=*                              # All IPs (dev only)
+  ALLOWED_HOSTS=192.168.1.100                  # Single IP
+  ALLOWED_HOSTS=192.168.1.100,10.0.0.5         # Multiple IPs
+  ALLOWED_HOSTS=192.168.1.0/24                 # Subnet
+  ALLOWED_HOSTS=app.example.com                # Hostname
+  ALLOWED_HOSTS=192.168.1.0/24,app.example.com # Mixed
+
+Commands:
+  ./update-access-control.sh    # Apply ALLOWED_HOSTS changes
+  ./show-connections.sh         # View connections & rules
+  ./test-access-control.sh      # Test configuration
+
+🔌 CONNECTION STRINGS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Standard:
+  postgresql://user:password@host:5432/database?sslmode=require
+
+Examples:
+  # Local
+  postgresql://admin:pass@localhost:5432/maindb?sslmode=require
+  
+  # Remote
+  postgresql://admin:pass@db.example.com:5432/maindb?sslmode=require
+  
+  # With custom port
+  postgresql://admin:pass@db.example.com:5433/maindb?sslmode=require
+
+Language-Specific:
+  Python:    psycopg2.connect("postgresql://...")
+  Node.js:   new Client({ connectionString: "postgresql://..." })
+  Go:        sql.Open("postgres", "host=... sslmode=require")
+  Java:      DriverManager.getConnection("jdbc:postgresql://...")
+
+📊 MANAGEMENT COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Database:
+  ./connect.sh              # Connect via psql
+  ./backup.sh               # Backup database
+  ./test-ssl.sh             # Test SSL connection
+
+Monitoring:
+  ./show-connections.sh     # View active connections
+  docker-compose logs -f    # View logs
+  docker-compose ps         # Check status
+
+🚢 COOLIFY DEPLOYMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Push code to Git repository
+2. Create new app in Coolify (Docker Compose type)
+3. Set environment variables:
+   - POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
+   - DOMAIN, LETSENCRYPT_EMAIL, USE_LETSENCRYPT
+   - ALLOWED_HOSTS
+4. Deploy!
+
+📁 KEY FILES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+.env                          # Your configuration
+docker-compose.yml            # Docker setup
+config/pg_hba.conf           # Access rules (auto-generated)
+config/postgresql.conf       # PostgreSQL config
+certs/                       # SSL certificates
+backups/                     # Database backups
+
+📚 DOCUMENTATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+README.md                    # Main documentation
+ACCESS_CONTROL_EXAMPLES.md   # Detailed access control scenarios
+URL_VS_HOSTNAME_GUIDE.md     # Understanding URLs vs hostnames
+
+🔧 COMMON WORKFLOWS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Add new allowed host:
+  1. Edit .env: ALLOWED_HOSTS=existing.com,new.com
+  2. ./update-access-control.sh
+  3. ./show-connections.sh  (verify)
+
+Switch to Let's Encrypt:
+  1. Edit .env: USE_LETSENCRYPT=true, DOMAIN=your-domain.com
+  2. ./setup-certs.sh
+  3. ./start.sh
+
+View who's connected:
+  ./show-connections.sh
+
+Test SSL:
+  ./test-ssl.sh
+
+🚨 TROUBLESHOOTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Connection refused:
+  - Check: docker ps | grep postgres
+  - Check: ./show-connections.sh
+  - Verify IP in ALLOWED_HOSTS
+
+"No pg_hba.conf entry":
+  - Your IP is not in ALLOWED_HOSTS
+  - Find your IP: curl ifconfig.me
+  - Add to .env and run: ./update-access-control.sh
+
+SSL errors:
+  - Check: ./test-ssl.sh
+  - Verify: openssl x509 -in certs/server.crt -noout -dates
+  - Renew: ./renew-certs.sh
+
+🔒 SECURITY NOTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ All connections require SSL
+✅ Modern TLS 1.2+ only
+✅ No client certificates needed
+✅ Access control via IP/hostname
+✅ Automatic Let's Encrypt renewal
+⚠️  Use ALLOWED_HOSTS=* only in development or behind firewall
+
+💡 TIPS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Connection changes apply instantly (no restart needed)
+• Use CIDR ranges for network segments
+• Let's Encrypt certs renew automatically with cron
+• Check certificate expiry: ./check-cert-expiry.sh
+• View logs: docker-compose logs -f postgres
+• PostgreSQL uses port 5432, NOT HTTP/HTTPS
+
+╔═══════════════════════════════════════════════════════════════════════╗
+║  For detailed docs: cat README.md                                     ║
+║  For examples: cat ACCESS_CONTROL_EXAMPLES.md                         ║
+║  For URL info: cat URL_VS_HOSTNAME_GUIDE.md                          ║
+╚═══════════════════════════════════════════════════════════════════════╝

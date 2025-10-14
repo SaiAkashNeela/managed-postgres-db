@@ -6,11 +6,12 @@ A production-ready PostgreSQL database setup with SSL/TLS encryption that doesn'
 
 - **SSL/TLS Encryption**: All connections are encrypted by default
 - **Let's Encrypt Support**: Production-ready certificates that work with any domain
+- **Connection Whitelist**: Control access by IP, CIDR, DNS, or allow all with `*`
 - **No Client Certificates Required**: Connect with just a connection string - no need to distribute certificate files
 - **Server-Side Certificate Management**: Certificates are managed on the server side
 - **Docker-Based**: Easy deployment and management with Docker Compose
 - **Coolify Compatible**: Ready-to-deploy on Coolify platform
-- **Dynamic Domain Configuration**: Uses environment variables for flexible deployment
+- **Dynamic Configuration**: Uses environment variables for flexible deployment
 - **pgAdmin Included**: Web-based database management interface
 - **Automatic Initialization**: Database, users, and tables created automatically
 - **Automatic Certificate Renewal**: Built-in Let's Encrypt renewal support
@@ -101,6 +102,9 @@ DOMAIN=your-domain.com              # Your actual domain or localhost
 LETSENCRYPT_EMAIL=admin@yourdomain.com
 USE_LETSENCRYPT=true                # true for Let's Encrypt, false for self-signed
 LETSENCRYPT_STAGING=false           # true for testing (avoids rate limits)
+
+# Connection Whitelist
+ALLOWED_HOSTS=*                     # See examples below
 ```
 
 **Important Configuration Notes:**
@@ -108,6 +112,69 @@ LETSENCRYPT_STAGING=false           # true for testing (avoids rate limits)
 - **For Production with Domain**: Set `DOMAIN=your-domain.com` and `USE_LETSENCRYPT=true`
 - **For Local Development**: Set `DOMAIN=localhost` and `USE_LETSENCRYPT=false`
 - **For Coolify**: Domain will be automatically set by Coolify
+
+### Connection Whitelist (ALLOWED_HOSTS)
+
+Control which clients can connect to your PostgreSQL database using the `ALLOWED_HOSTS` environment variable.
+
+**⚠️ Important:** Use hostnames or IPs, **NOT** URLs! PostgreSQL uses its own protocol (port 5432), not HTTP/HTTPS.
+
+- ✅ `app.example.com` (hostname - correct)
+- ✅ `192.168.1.100` (IP - correct)
+- ❌ `https://app.example.com` (URL - don't use)
+
+The script automatically strips `http://` or `https://` if accidentally included.
+
+#### Examples
+
+**Allow All Connections (Default)**
+```bash
+ALLOWED_HOSTS=*
+```
+
+**Specific IP Addresses**
+```bash
+ALLOWED_HOSTS=192.168.1.100,10.0.0.5,203.0.113.42
+```
+
+**CIDR Ranges**
+```bash
+ALLOWED_HOSTS=192.168.1.0/24,10.0.0.0/8,172.16.0.0/12
+```
+
+**DNS/Hostnames (no http/https)**
+```bash
+ALLOWED_HOSTS=app1.example.com,app2.example.com,backend.myapp.com
+```
+
+**Mixed (IPs, CIDR, DNS)**
+```bash
+ALLOWED_HOSTS=192.168.1.100,10.0.0.0/16,app.example.com,db.myapp.com
+```
+
+**IPv6 Support**
+```bash
+ALLOWED_HOSTS=2001:db8::1,2001:db8::/32
+```
+
+#### Updating Access Control
+
+After changing `ALLOWED_HOSTS` in `.env`:
+
+```bash
+# Update and reload (no restart needed)
+./update-access-control.sh
+
+# View current connections and rules
+./show-connections.sh
+```
+
+**Important Notes:**
+- Changes take effect immediately (no database restart required)
+- All connections require SSL regardless of whitelist
+- Localhost (127.0.0.1) is always allowed
+- Docker network ranges are always allowed
+- Use `*` carefully in production - only if behind a firewall
 
 ## 🔌 Connecting to the Database
 
@@ -195,35 +262,89 @@ using var conn = new NpgsqlConnection(connString);
 
 ## 🛠️ Management Scripts
 
-### Start Database
+### Database Operations
+
+**Start Database**
 ```bash
 ./start.sh
 ```
 
-### Stop Database
+**Stop Database**
 ```bash
 ./stop.sh
 ```
 
-### Connect via psql
+**Connect via psql**
 ```bash
 ./connect.sh
 ```
 
-### Backup Database
+**Backup Database**
 ```bash
 ./backup.sh
 ```
 Backups are saved to `./backups/` directory.
 
-### Test SSL Connection
+**Test SSL Connection**
 ```bash
 ./test-ssl.sh
 ```
 
-### View Logs
+### Access Control Management
+
+**View Current Connections and Rules**
+```bash
+./show-connections.sh
+```
+Shows:
+- Active pg_hba.conf rules
+- Current database connections
+- SSL status for each connection
+- Connection summary statistics
+- Current ALLOWED_HOSTS configuration
+
+**Update Access Control**
+```bash
+# 1. Edit .env and change ALLOWED_HOSTS
+nano .env
+
+# 2. Apply changes (no restart needed)
+./update-access-control.sh
+```
+
+**Regenerate pg_hba.conf**
+```bash
+./generate-pg-hba.sh
+```
+
+### Certificate Management
+
+**Setup/Regenerate Certificates**
+```bash
+./setup-certs.sh
+```
+Automatically chooses Let's Encrypt or self-signed based on `.env` configuration.
+
+**Renew Let's Encrypt Certificates**
+```bash
+./renew-certs.sh
+```
+
+**Check Certificate Expiration**
+```bash
+./check-cert-expiry.sh
+```
+
+### Monitoring
+
+**View Logs**
 ```bash
 docker-compose logs -f postgres
+```
+
+**Check Container Status**
+```bash
+docker-compose ps
 ```
 
 ## 🔧 Advanced Configuration
@@ -346,11 +467,15 @@ The setup includes sample tables:
 ## 🔒 Security Features
 
 - ✅ SSL/TLS encryption for all connections
+- ✅ IP/DNS/CIDR-based access control via `ALLOWED_HOSTS`
 - ✅ Password authentication with scram-sha-256
 - ✅ Non-SSL connections rejected for remote access
 - ✅ Connection logging enabled
 - ✅ Modern cipher suites only
 - ✅ TLS 1.2+ required
+- ✅ Dynamic access control updates (no restart required)
+
+For detailed access control examples, see [ACCESS_CONTROL_EXAMPLES.md](ACCESS_CONTROL_EXAMPLES.md)
 
 ## 📦 Backup and Restore
 
@@ -387,6 +512,19 @@ docker-compose logs -f postgres
 - Check if container is running: `docker ps`
 - Check if port is available: `lsof -i :5432`
 - Check firewall settings
+- Verify your IP is in `ALLOWED_HOSTS`: `./show-connections.sh`
+
+### Connection from specific IP blocked?
+```bash
+# Check current access rules
+./show-connections.sh
+
+# Update ALLOWED_HOSTS in .env
+nano .env
+
+# Apply changes
+./update-access-control.sh
+```
 
 ### Self-signed certificate warnings?
 This is normal with self-signed certificates. Use `sslmode=require` (not `verify-ca` or `verify-full`) to avoid these warnings while still maintaining encrypted connections.
